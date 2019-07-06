@@ -1,0 +1,50 @@
+Merged <- read.csv("ictictbaby.csv")
+
+#H1: Proportion of Simultaneous Insurgent Attacks
+
+##Calculating Proportion of Simultaneous Attacks
+Sim <- Merged %>% group_by(country,year) %>% 
+  summarise(sum_sim = sum(multiple)/ length(multiple))
+Merged_Sim <- merge(Merged,Sim)
+
+rownames(Merged_Sim) <- NULL
+
+##Unit of Analysis Problem
+Merged_Sim <- Merged_Sim %>% 
+  distinct(Merged$country, Merged$year, .keep_all = T)
+
+##Panel Data Regression Model
+Model1 <- plm(formula = sum_sim ~ ict + gdp + pop, data = Merged_Sim, 
+              model = "within", index = c("country", "year"))
+              
+##Clustering for Standard Errors
+Model1_se <- coeftest(Model1, vcov = vcovHC(Model1, type = "HC1", cluster="group"))
+
+#H2: Frequency of Insurgent Attacks
+
+##Unit of Analysis Problem 
+Merged <- Merged %>% 
+  distinct(Merged$country, Merged$year, .keep_all = T)
+rownames(Merged) <- NULL
+
+##Regression Model
+Model2 <- glm.nb(freq ~ ict + country + year + gdp + pop, data = Merged)
+summary(Model2)
+
+#H3: Lethality of Insurgent Attacks
+
+##Fatalities by country/year
+Merged <- Merged[complete.cases(Merged$nkill), ]
+Fatalities <- Merged %>% group_by(country,year) %>%
+  summarise(fatalities = sum(nkill))
+Merged_Fatalities <- merge(Merged,Fatalities)
+
+rownames(Merged_Fatalities) <- NULL
+
+##Unit of Analysis Problem
+Merged_Fatalities <- Merged_Fatalities %>% 
+  distinct(Merged$country, Merged$year, .keep_all = T)
+
+##Regression Model
+Model3 <- glm.nb(fatalities ~ ict + gdp + pop, data = Merged_Fatalities)
+summary(Model3)
